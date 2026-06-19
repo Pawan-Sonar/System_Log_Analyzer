@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: sla_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: sla_backend
+    environment:
+      MONGO_URL: "mongodb://mongo:27017"
+      DB_NAME: "security_log_analyzer"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost"
+      JWT_SECRET: "${JWT_SECRET:-change-me-in-production}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@soc.com}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Admin@123}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      SENDER_EMAIL: "${SENDER_EMAIL:-onboarding@resend.dev}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+      APP_NAME: "SecurityLogAnalyzer"
+      ANALYTICS_URL: "http://analytics:9000"
+    depends_on:
+      - mongo
+      - analytics
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.analytics
+    container_name: sla_analytics
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: sla_frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
